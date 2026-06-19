@@ -38,6 +38,13 @@ else
     log "unzip already installed."
 fi
 
+if ! command -v ffmpeg >/dev/null 2>&1; then
+    log "ffmpeg not found. Trying to install ffmpeg (required for audio conversion)..."
+    sudo apt-get install -y ffmpeg || true
+else
+    log "ffmpeg already installed."
+fi
+
 log "=== Installing Python dependencies ==="
 
 pip install -U pip wheel setuptools -q

@@ -389,7 +389,11 @@ class FeatureAudioSpeakerLoader(torch.utils.data.Dataset):
                 torch.save(spec, spec_path)
         return spec
 
-    def _load_spk_embedding(self, audio_path, speaker):
+    def _load_spk_embedding(self, audio_path, lang, speaker):
+        # NOTE: `lang` is accepted for a uniform call signature with the other
+        # feature loaders, but precomputed speaker embeddings are stored as
+        # <spk_embeddings_dir>/<speaker>/<utt>.npy (see scripts/preprocess_spk.py),
+        # i.e. WITHOUT a language sub-folder, so it is intentionally not used here.
         if self.spk_embeddings_dir is not None:
             spk_path = os.path.join(
                 self.spk_embeddings_dir if self.spk_embeddings_dir is not None else "",
