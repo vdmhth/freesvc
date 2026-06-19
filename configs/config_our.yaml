@@ -21,7 +21,7 @@ train:
   log_interval: 10
 
   valid_steps_interval: 1000
-  save_steps_interval: 2000
+  save_steps_interval: 5000
   valid_epoch_interval: 1
   save_epoch_interval: 5
 
