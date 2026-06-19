@@ -9,8 +9,8 @@ bash 5_train.sh
 python make_inference_pairs.py \
   --split-csv dataset_custom/test.csv \
   --out dataset_custom/eval_pairs.csv \
-  --max-src-per-singer 3 \
-  --targets-per-src 2 \
+  --max-src-per-singer #3 \
+  --targets-per-src #2 \
   --seed 1806
 ```
 ```bash
