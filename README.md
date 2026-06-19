@@ -15,14 +15,14 @@ python make_inference_pairs.py \
 ```
 ```bash
 python scripts/inference_online_spk.py \
- --hpfile path/to/config.yaml \
- --ptfile path/to/checkpoint.pth \
+ --hpfile dataset_custom/runs/officialstyle_freevcGD/.hydra/config.yaml\
+ --ptfile dataset_custom/checkpoints/G_XXXXX_XXXXXXX.pth \
  --input-base-dir / \
  --metadata-path path/to/eval_pairs.csv \
  --spk-mode online \
  --spk-ref-base-dir dataset_custom/audio \
  --num-ref-wavs 10 \
- --pitch-predictor rvmpe \
+ --pitch-predictor rmvpe \
  --out-dir gen-samples/
 ```
 
