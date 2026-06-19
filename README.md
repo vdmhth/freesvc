@@ -20,7 +20,7 @@ python scripts/inference_online_spk.py \
  --metadata-path path/to/eval_pairs.csv \
  --spk-mode online \
  --spk-ref-base-dir dataset_custom/audio \
- --num-ref-wavs 3 \
+ --num-ref-wavs 10 \
  --pitch-predictor rvmpe \
  --out-dir gen-samples/
 ```
