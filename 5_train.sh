@@ -22,7 +22,7 @@ cd "${REPO_DIR}"
 mkdir -p "${REPO_DIR}/logs" "${DATASET_DIR}/checkpoints"
 
 if [ ! -f "${DATASET_DIR}/train.csv" ] || [ ! -f "${DATASET_DIR}/valid.csv" ]; then
-    echo "Missing train.csv/valid.csv. Run 3_make_splits.sh first." >&2
+    echo "Missing train.csv/valid.csv. Run prepare.sh" >&2
     exit 1
 fi
 
