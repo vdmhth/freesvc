@@ -1,16 +1,17 @@
 ## Training
 ```bash
 bash run_prepare.sh
-sbatch 4_extract_pitch.sh
-sbatch 5_train.sh
+bash 4_extract_pitch.sh
+bash 5_train.sh
 ```
 ## Inference
 ```bash
-python make_inference_pairs.py
- --split-csv dataset_custom/test.csv
---train-csv dataset_custom/train.csv
---out dataset_custom/eval_pairs.csv
---on-leak error
+python make_inference_pairs.py \
+  --split-csv dataset_custom/test.csv \
+  --out dataset_custom/eval_pairs.csv \
+  --max-src-per-singer 3 \
+  --targets-per-src 2 \
+  --seed 1806
 ```
 ```bash
 python scripts/inference_online_spk.py \
