@@ -41,6 +41,7 @@ run_sort() {
         --output-dir "${AUDIO_ROOT}" \
         --language "${LANGUAGE}" \
         --sample-rate "${SAMPLE_RATE}" \
+        --singer-source "${SORT_SINGER_MODE:-parent}" \
         --manifest "${SORT_MANIFEST}" \
         "${extra_flags[@]}"
 }
@@ -69,6 +70,15 @@ elif [ "${#DATA_CHUNK_IDS[@]}" -gt 0 ]; then
 else
     echo "No SOURCE_DATA_DIR and DATA_CHUNK_IDS is empty. Edit config.sh first." >&2
     exit 1
+fi
+
+# Cleanup at the VERY END of sort: all chunks are downloaded, extracted and
+# sorted into AUDIO_ROOT by now, so the whole raw staging area (archives +
+# extracted folders) can be removed in one pass. Doing it here (instead of
+# per-chunk) means nothing is deleted until the full sort has succeeded.
+if [ "${DELETE_CHUNK_AFTER_SORT:-1}" = "1" ] && [ -d "${EXTRACT_BASE}" ]; then
+    log "Sort finished. Removing raw chunk staging dir to save disk: ${EXTRACT_BASE}"
+    rm -rf "${EXTRACT_BASE}"
 fi
 
 log "Data sorted into ${AUDIO_ROOT}/${LANGUAGE}/<singer>"
