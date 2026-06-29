@@ -1,7 +1,7 @@
 import torch
 import torch.utils.data
 from librosa.filters import mel as librosa_mel_fn
-
+from torch.cuda.amp import autocast
 import logging
 logger = logging.getLogger(__name__)
 
@@ -42,27 +42,48 @@ class MelProcessing:
         self.mel_basis = mel_basis
         self.hann_window = hann_window
 
-    # TODO: sample rate is not used
     def spectrogram_torch(self, y, n_fft, sampling_rate, hop_size, win_size, center=False):
-        if torch.min(y) < -1.:
-            print('min value is ', torch.min(y))
-        if torch.max(y) > 1.:
-            print('max value is ', torch.max(y))
+        if sampling_rate <= 0:
+            raise ValueError("sampling_rate must be positive")
 
-        dtype_device = str(y.dtype) + '_' + str(y.device)
-        wnsize_dtype_device = str(win_size) + '_' + dtype_device
-        if wnsize_dtype_device not in self.hann_window:
-            self.hann_window[wnsize_dtype_device] = torch.hann_window(
-                win_size).to(dtype=y.dtype, device=y.device)
+        with torch.cuda.amp.autocast(enabled=False):
+            y = y.float()
 
-        y = torch.nn.functional.pad(y.unsqueeze(
-            1), (int((n_fft-hop_size)/2), int((n_fft-hop_size)/2)), mode='reflect')
-        y = y.squeeze(1)
+            if torch.min(y) < -1.:
+                print('min value is ', torch.min(y))
+            if torch.max(y) > 1.:
+                print('max value is ', torch.max(y))
 
-        spec = torch.stft(y, n_fft, hop_length=hop_size, win_length=win_size, window=self.hann_window[wnsize_dtype_device],
-                          center=center, pad_mode='reflect', normalized=False, onesided=True, return_complex=False)
+            dtype_device = str(y.dtype) + '_' + str(y.device)
+            wnsize_dtype_device = str(win_size) + '_' + dtype_device
 
-        spec = torch.sqrt(spec.pow(2).sum(-1) + 1e-6)
+            if wnsize_dtype_device not in self.hann_window:
+                self.hann_window[wnsize_dtype_device] = torch.hann_window(
+                    win_size
+                ).to(dtype=y.dtype, device=y.device)
+
+            y = torch.nn.functional.pad(
+                y.unsqueeze(1),
+                (int((n_fft - hop_size) / 2), int((n_fft - hop_size) / 2)),
+                mode='reflect'
+            )
+            y = y.squeeze(1)
+
+            spec = torch.stft(
+                y,
+                n_fft,
+                hop_length=hop_size,
+                win_length=win_size,
+                window=self.hann_window[wnsize_dtype_device],
+                center=center,
+                pad_mode='reflect',
+                normalized=False,
+                onesided=True,
+                return_complex=False
+            )
+
+            spec = torch.sqrt(spec.pow(2).sum(-1) + 1e-6)
+
         return spec
 
     def spec_to_mel_torch(self, spec, n_fft, num_mels, sampling_rate, fmin, fmax):
@@ -77,7 +98,21 @@ class MelProcessing:
         spec = spectral_normalize_torch(spec)
         return spec
 
-    def mel_spectrogram_torch(self, y, n_fft, num_mels, sampling_rate, hop_size, win_size, fmin, fmax, center=False):
+def mel_spectrogram_torch(
+    self,
+    y,
+    n_fft,
+    num_mels,
+    sampling_rate,
+    hop_size,
+    win_size,
+    fmin,
+    fmax,
+    center=False
+):
+    with torch.cuda.amp.autocast(enabled=False):
+        y = y.float()
+
         if torch.min(y) < -1.:
             logger.debug('min value is ', torch.min(y))
         if torch.max(y) > 1.:
@@ -86,27 +121,52 @@ class MelProcessing:
         dtype_device = str(y.dtype) + '_' + str(y.device)
         fmax_dtype_device = str(fmax) + '_' + dtype_device
         wnsize_dtype_device = str(win_size) + '_' + dtype_device
+
         if fmax_dtype_device not in self.mel_basis:
-            mel = librosa_mel_fn(sr=sampling_rate, n_fft=n_fft,
-                                 n_mels=num_mels, fmin=fmin, fmax=fmax)
+            mel = librosa_mel_fn(
+                sr=sampling_rate,
+                n_fft=n_fft,
+                n_mels=num_mels,
+                fmin=fmin,
+                fmax=fmax
+            )
             self.mel_basis[fmax_dtype_device] = torch.from_numpy(
-                mel).to(dtype=y.dtype, device=y.device)
+                mel
+            ).to(dtype=y.dtype, device=y.device)
+
         if wnsize_dtype_device not in self.hann_window:
             self.hann_window[wnsize_dtype_device] = torch.hann_window(
-                win_size).to(dtype=y.dtype, device=y.device)
+                win_size
+            ).to(dtype=y.dtype, device=y.device)
 
-        y = torch.nn.functional.pad(y.unsqueeze(
-            1), (int((n_fft-hop_size)/2), int((n_fft-hop_size)/2)), mode='reflect')
+        y = torch.nn.functional.pad(
+            y.unsqueeze(1),
+            (int((n_fft - hop_size) / 2), int((n_fft - hop_size) / 2)),
+            mode='reflect'
+        )
         y = y.squeeze(1)
 
-        spec = torch.stft(y, n_fft, hop_length=hop_size, win_length=win_size, window=self.hann_window[wnsize_dtype_device],
-                          center=center, pad_mode='reflect', normalized=False, onesided=True, return_complex=False)
+        spec = torch.stft(
+            y,
+            n_fft,
+            hop_length=hop_size,
+            win_length=win_size,
+            window=self.hann_window[wnsize_dtype_device],
+            center=center,
+            pad_mode='reflect',
+            normalized=False,
+            onesided=True,
+            return_complex=False
+        )
 
         spec = torch.sqrt(spec.pow(2).sum(-1) + 1e-6)
 
-        spec = torch.matmul(self.mel_basis[fmax_dtype_device], spec)
+        spec = torch.matmul(
+            self.mel_basis[fmax_dtype_device],
+            spec
+        )
+
         spec = spectral_normalize_torch(spec)
 
-        return spec
-
+    return spec
 mel_processing = MelProcessing()
