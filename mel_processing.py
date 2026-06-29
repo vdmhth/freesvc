@@ -98,75 +98,75 @@ class MelProcessing:
         spec = spectral_normalize_torch(spec)
         return spec
 
-def mel_spectrogram_torch(
-    self,
-    y,
-    n_fft,
-    num_mels,
-    sampling_rate,
-    hop_size,
-    win_size,
-    fmin,
-    fmax,
-    center=False
-):
-    with torch.cuda.amp.autocast(enabled=False):
-        y = y.float()
+    def mel_spectrogram_torch(
+        self,
+        y,
+        n_fft,
+        num_mels,
+        sampling_rate,
+        hop_size,
+        win_size,
+        fmin,
+        fmax,
+        center=False
+    ):
+        with torch.cuda.amp.autocast(enabled=False):
+            y = y.float()
 
-        if torch.min(y) < -1.:
-            logger.debug('min value is ', torch.min(y))
-        if torch.max(y) > 1.:
-            logger.debug('max value is ', torch.max(y))
+            if torch.min(y) < -1.:
+                logger.debug('min value is ', torch.min(y))
+            if torch.max(y) > 1.:
+                logger.debug('max value is ', torch.max(y))
 
-        dtype_device = str(y.dtype) + '_' + str(y.device)
-        fmax_dtype_device = str(fmax) + '_' + dtype_device
-        wnsize_dtype_device = str(win_size) + '_' + dtype_device
+            dtype_device = str(y.dtype) + '_' + str(y.device)
+            fmax_dtype_device = str(fmax) + '_' + dtype_device
+            wnsize_dtype_device = str(win_size) + '_' + dtype_device
 
-        if fmax_dtype_device not in self.mel_basis:
-            mel = librosa_mel_fn(
-                sr=sampling_rate,
-                n_fft=n_fft,
-                n_mels=num_mels,
-                fmin=fmin,
-                fmax=fmax
+            if fmax_dtype_device not in self.mel_basis:
+                mel = librosa_mel_fn(
+                    sr=sampling_rate,
+                    n_fft=n_fft,
+                    n_mels=num_mels,
+                    fmin=fmin,
+                    fmax=fmax
+                )
+                self.mel_basis[fmax_dtype_device] = torch.from_numpy(
+                    mel
+                ).to(dtype=y.dtype, device=y.device)
+
+            if wnsize_dtype_device not in self.hann_window:
+                self.hann_window[wnsize_dtype_device] = torch.hann_window(
+                    win_size
+                ).to(dtype=y.dtype, device=y.device)
+
+            y = torch.nn.functional.pad(
+                y.unsqueeze(1),
+                (int((n_fft - hop_size) / 2), int((n_fft - hop_size) / 2)),
+                mode='reflect'
             )
-            self.mel_basis[fmax_dtype_device] = torch.from_numpy(
-                mel
-            ).to(dtype=y.dtype, device=y.device)
+            y = y.squeeze(1)
 
-        if wnsize_dtype_device not in self.hann_window:
-            self.hann_window[wnsize_dtype_device] = torch.hann_window(
-                win_size
-            ).to(dtype=y.dtype, device=y.device)
+            spec = torch.stft(
+                y,
+                n_fft,
+                hop_length=hop_size,
+                win_length=win_size,
+                window=self.hann_window[wnsize_dtype_device],
+                center=center,
+                pad_mode='reflect',
+                normalized=False,
+                onesided=True,
+                return_complex=False
+            )
 
-        y = torch.nn.functional.pad(
-            y.unsqueeze(1),
-            (int((n_fft - hop_size) / 2), int((n_fft - hop_size) / 2)),
-            mode='reflect'
-        )
-        y = y.squeeze(1)
+            spec = torch.sqrt(spec.pow(2).sum(-1) + 1e-6)
 
-        spec = torch.stft(
-            y,
-            n_fft,
-            hop_length=hop_size,
-            win_length=win_size,
-            window=self.hann_window[wnsize_dtype_device],
-            center=center,
-            pad_mode='reflect',
-            normalized=False,
-            onesided=True,
-            return_complex=False
-        )
+            spec = torch.matmul(
+                self.mel_basis[fmax_dtype_device],
+                spec
+            )
 
-        spec = torch.sqrt(spec.pow(2).sum(-1) + 1e-6)
+            spec = spectral_normalize_torch(spec)
 
-        spec = torch.matmul(
-            self.mel_basis[fmax_dtype_device],
-            spec
-        )
-
-        spec = spectral_normalize_torch(spec)
-
-    return spec
+        return spec
 mel_processing = MelProcessing()
