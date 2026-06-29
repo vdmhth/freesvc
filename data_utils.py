@@ -497,6 +497,7 @@ class FeatureAudioSpeakerLoader(torch.utils.data.Dataset):
                 pitch = pitch[0]
 
         # Interpolates to ensures that pitch and z have the same length
+        pitch = np.nan_to_num(np.asarray(pitch, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0)
         z_len = int(audio.shape[-1] / self.hop_length)
         pitch = torch.nn.functional.interpolate(
             torch.tensor(pitch).unsqueeze(0).unsqueeze(0),
@@ -559,9 +560,12 @@ class FeatureAudioSpeakerCollate():
                 b = self.dataset.get_audio_and_features((fp, lang, spk))
                 b.append(fp)
                 batch.append(b.copy())
-            except:
-                self.logger.error(fp)
-
+            except Exception as e:
+                import traceback
+                self.logger.error(f"SKIP {fp}: {repr(e)}\n{traceback.format_exc()}")
+        if len(batch) == 0:
+            self.logger.error("Empty batch: tat ca mau deu loi khi load. Bo qua batch nay.")
+            return None
         _, ids_sorted_decreasing = torch.sort(
             torch.LongTensor([x[1].size(1) for x in batch]),
             dim=0, descending=True)

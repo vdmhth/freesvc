@@ -211,6 +211,8 @@ class Trainer:
 
         for batch_idx, items in tqdm(enumerate(train_loader), total=len(train_loader)):
             try:
+                if items is None:
+                    continue
                 if self.config.data.use_spk_emb and not self.config.data.get("use_lang_emb", False):
                     c, spec, y, pitch, spk = items
                     spk = spk.cuda(rank, non_blocking=True)
@@ -273,6 +275,8 @@ class Trainer:
         generator.eval()
         with torch.no_grad():
             for batch_idx, items in tqdm(enumerate(valid_loader)):
+                if items is None:
+                    continue
                 if self.config.data.use_spk_emb and not self.config.data.get("use_lang_emb", False):
                     c, spec, y, pitch, spk = items
                     g = spk[:1].cuda(0)
