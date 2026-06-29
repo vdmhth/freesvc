@@ -87,15 +87,17 @@ class MelProcessing:
         return spec
 
     def spec_to_mel_torch(self, spec, n_fft, num_mels, sampling_rate, fmin, fmax):
-        dtype_device = str(spec.dtype) + '_' + str(spec.device)
-        fmax_dtype_device = str(fmax) + '_' + dtype_device
-        if fmax_dtype_device not in self.mel_basis:
-            mel = librosa_mel_fn(sr=sampling_rate, n_fft=n_fft,
-                                 n_mels=num_mels, fmin=fmin, fmax=fmax)
-            self.mel_basis[fmax_dtype_device] = torch.from_numpy(
-                mel).to(dtype=spec.dtype, device=spec.device)
-        spec = torch.matmul(self.mel_basis[fmax_dtype_device], spec)
-        spec = spectral_normalize_torch(spec)
+        with torch.cuda.amp.autocast(enabled=False):
+            spec = spec.float()
+            dtype_device = str(spec.dtype) + '_' + str(spec.device)
+            fmax_dtype_device = str(fmax) + '_' + dtype_device
+            if fmax_dtype_device not in self.mel_basis:
+                mel = librosa_mel_fn(sr=sampling_rate, n_fft=n_fft,
+                                    n_mels=num_mels, fmin=fmin, fmax=fmax)
+                self.mel_basis[fmax_dtype_device] = torch.from_numpy(
+                    mel).to(dtype=spec.dtype, device=spec.device)
+            spec = torch.matmul(self.mel_basis[fmax_dtype_device], spec)
+            spec = spectral_normalize_torch(spec)
         return spec
 
     def mel_spectrogram_torch(
